@@ -1,29 +1,95 @@
 # weewx-livedata
 
-Puts the current readings on a web page as fast as your station reports them,
-without MQTT and without opening a port at home.
+Makes a WeeWX station a data source, so the page that shows it can be anything
+you want to build.
 
-WeeWX writes its reports once per archive interval, usually every five minutes.
-A page that shows a reading older than that is the normal state of affairs. This
-service watches LOOP packets instead, keeps the latest value of every
-observation, and posts the lot to your web space every few seconds. A small file
-there receives it and writes `live.json` next to your pages, and the page reads
-that file.
+WeeWX renders HTML. Changing what a page looks like means editing Cheetah
+templates, and changing what it shows means editing them again. For a skin that
+is the right arrangement. It is in the way as soon as the weather is one part of
+a site that already exists, or the page should be a WordPress widget, a React
+dashboard, or a screen on a tablet in the hall.
+
+Three pieces together take it out of the way. None of them renders markup:
+
+| Source | Writes | Comes from |
+|---|---|---|
+| `weewx.jsongenerator` | the archive as JSON, one day to the whole record | WeeWX 5.6 |
+| a Cheetah template | whatever figures you name, as JSON | WeeWX, any version |
+| this extension | the current readings, every few seconds | here |
+
+What comes out is a directory of static JSON files beside your pages. Your front
+end fetches them. That is the whole interface.
+
+## What that buys
+
+**Any stack.** `fetch` and `json_decode` exist everywhere. A plain HTML page, a
+PHP include in an existing site, a WordPress plugin, a Node or Astro build, a
+Vue component: none of them needs to know that WeeWX exists, only that some JSON
+sits at a URL.
+
+**Static files.** No PHP execution to draw a page, no database query per
+visitor, nothing to keep running. They cache, they go behind a CDN, they survive
+a WeeWX restart, and a station that goes offline leaves the last state readable
+instead of a broken page.
+
+**No Cheetah for the ordinary case.** Live readings and charts over any span
+back to the beginning of the record need none: those files are already written.
+Cheetah comes in only where you want a figure nobody has computed yet, and
+[Aggregates with Cheetah](https://github.com/hilman2/weewx-livedata/wiki/Aggregates-with-Cheetah) is a guide to that with
+templates to copy.
+
+**Units and language stay open.** The files hold raw numbers, not formatted
+text, with the conversion table beside them. One set of files serves a metric
+page and a US page, and a reader can switch between them without a report being
+re-rendered.
+
+**One page, one file.** The starter theme below is a single HTML file: live
+readings, charts over four spans with archive navigation, aggregates, and a
+language switch. Copy it and restyle it.
+
+## Where to start
+
+| You want to | Read |
+|---|---|
+| Put live readings on a page you already have | [Installing](#installing), then [Using it from a page](#using-it-from-a-page) |
+| Build a whole page on WeeWX's JSON | [Building a page on WeeWX](https://github.com/hilman2/weewx-livedata/wiki/Building-a-page-on-WeeWX) |
+| Compute a figure WeeWX does not already write | [Aggregates with Cheetah](https://github.com/hilman2/weewx-livedata/wiki/Aggregates-with-Cheetah) |
+| Put it inside WordPress, Node, or a PHP site | [Integrating into an existing site](https://github.com/hilman2/weewx-livedata/wiki/Integrating-into-an-existing-site) |
+| Copy a working page and restyle it | [The starter theme](https://github.com/hilman2/weewx-livedata/wiki/The-starter-theme) |
+| Know how the live part works | [How it works](https://github.com/hilman2/weewx-livedata/wiki/How-it-works) |
+| Write the endpoint in another language | [The endpoint contract](https://github.com/hilman2/weewx-livedata/wiki/The-endpoint-contract) |
+
+## What this extension does
+
+The other two pieces are WeeWX. This one is the live reading.
+
+WeeWX writes its reports once per archive interval, usually every five minutes,
+so a page built by a report shows a reading up to five minutes old. This service
+watches LOOP packets instead, keeps the latest value of every observation, and
+posts the lot to your web space every few seconds. A small file there receives
+it and writes `live.json` next to your pages.
 
 The station posts outward. It needs no open port, no fixed address and no
 dynamic DNS, which is what stops most live setups on a home connection.
 
-The [wiki](https://github.com/hilman2/weewx-livedata/wiki) says how it works,
-what a replacement endpoint has to do, and
-what a page built entirely on WeeWX's JSON looks like.
-
 ## What it needs
+
+For the live readings:
 
 * WeeWX 5.2 or later
 * Somewhere to put `live.php`, on a host that runs PHP over HTTPS
 
-Any other language will do instead. `live.php` is forty lines, and the section
-[The endpoint](#the-endpoint) says what a replacement has to do.
+Any other language will do instead of PHP. `live.php` is forty lines, and
+[The endpoint contract](https://github.com/hilman2/weewx-livedata/wiki/The-endpoint-contract) says what a replacement has to
+do.
+
+For the archive and the charts:
+
+* WeeWX 5.6, which is where `weewx.jsongenerator` and the `Horizon` skin arrive.
+  Until it is released it is on the `development` branch.
+
+The two are independent. Live readings work on 5.2 with no JSON generator, and
+the JSON generator works with no live extension. Together they cover a page.
 
 ## Installing
 
@@ -156,14 +222,24 @@ setInterval(async () => {
 That last line puts the raw number on the page. Converting it into the unit the
 reader asked for is the job of the table in `index.json`.
 
-## A worked example
+## The starter theme
 
-[`examples/weewxtest`](examples/weewxtest) is a static page with no skin behind
-it: current readings, charts, the figures of the whole record, and a switch
-between German and American units, all of it fed by JSON that WeeWX writes.
-What that makes possible is in
-[A page with no
-skin](https://github.com/hilman2/weewx-livedata/wiki/A-page-with-no-skin).
+[`examples/weewxtest`](examples/weewxtest) is a working page to copy: current
+readings with today's range, four charts with archive navigation back to the
+first record, the figures of the whole record, and a switch between German and
+American units. One HTML file, one copy of ECharts, no build step, no framework.
+
+Everything on it comes from the JSON. Restyling it is CSS, and swapping in your
+own charts is one list at the top of the script.
+
+[The starter theme](https://github.com/hilman2/weewx-livedata/wiki/The-starter-theme) walks through it.
+
+## For an agent
+
+[`skills/weewx-json-frontend`](skills/weewx-json-frontend) is a skill file for
+Claude Code, Codex or anything that reads instructions from a repository. It
+carries the file formats, the aggregate patterns, and where to read the WeeWX
+source, so an agent can build the scaffolding without guessing at any of it.
 
 ## Tests
 
