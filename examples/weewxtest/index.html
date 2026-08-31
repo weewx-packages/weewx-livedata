@@ -385,6 +385,35 @@ function startOf(when, key) {
   return d;
 }
 
+/* How many whole units lie between 'when' and now, counted the way each unit is
+   counted. Switching from a day in the past to the year view should land on the
+   year that day is in, not on the year the same number of steps back: two steps
+   is two days or two years depending on which button was pressed last, and
+   carrying the number across would move the reader somewhere they did not ask
+   to go. */
+function unitsBack(when, key) {
+  var now = new Date();
+  if (key === 'year') { return now.getFullYear() - when.getFullYear(); }
+  if (key === 'month') {
+    return (now.getFullYear() - when.getFullYear()) * 12
+         + now.getMonth() - when.getMonth();
+  }
+  /* Between the two starts of the unit, not between the two dates: a Saturday
+     two days ago sits in last week where the week begins on Sunday, and dividing
+     two days by seven would answer this one. Rounded because a clock change
+     makes one of those days 23 or 25 hours long. */
+  var apart = startOf(now, key) - startOf(when, key);
+  return Math.round(apart / (key === 'week' ? 7 * 86400000 : 86400000));
+}
+
+/* The moment the reader is looking at: the last one inside the window, or now
+   where the window runs up to it. The last rather than the first, so that
+   stepping down from the current year lands on today rather than on the first
+   of January. */
+function looking() {
+  return new Date(Math.min(currentWindow().to * 1000 - 1000, Date.now()));
+}
+
 /* 'by' units later, or earlier where it is negative. Counted on the calendar,
    not in seconds: a month is 28 to 31 days, a year 365 or 366, and the hour a
    clock change adds belongs to the day it falls in rather than pushing every
@@ -608,7 +637,10 @@ function buildChrome() {
     b.dataset.text = s.text;
     b.setAttribute('aria-pressed', String(s === span));
     b.onclick = function () {
+      /* Where they are looking now, before the span changes under them. */
+      var at = looking();
       span = s;
+      back = Math.max(0, unitsBack(at, s.key));
       tabs.querySelectorAll('button').forEach(function (other) {
         other.setAttribute('aria-pressed', String(other === b));
       });
@@ -728,8 +760,12 @@ function paintRecords() {
     if (top === null) { return; }
     rows.push([t(high.text), name(top) + ': ' + as(over[top][high.field])]);
     if (!low) { return; }
+    /* One row cannot be both the wettest and the driest, so where the pair
+       reads a single figure the second row is dropped. Where it reads two, the
+       same row winning both is ordinary: a clear day is the warmest and the
+       coldest of its month, and saying so is not a contradiction. */
     var bottom = edge(over, low.field, lower);
-    if (bottom !== null && bottom !== top) {
+    if (bottom !== null && (bottom !== top || low.field !== high.field)) {
       rows.push([t(low.text), name(bottom) + ': ' + as(over[bottom][low.field])]);
     }
   }
@@ -796,6 +832,11 @@ function applyLanguage() {
   showAge();
   if (latest) { paintLive(latest); }
   paintRecords();
+  /* The week starts on another day in the other language, so a week window has
+     to be measured again before it is drawn. */
+  if (span.key === 'week' && back > 0) {
+    back = Math.max(0, unitsBack(looking(), 'week'));
+  }
   draw();
   pollLive();
 }
