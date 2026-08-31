@@ -13,6 +13,10 @@ that file.
 The station posts outward. It needs no open port, no fixed address and no
 dynamic DNS, which is what stops most live setups on a home connection.
 
+The [wiki](https://github.com/hilman2/weewx-livedata/wiki) says how it works,
+what a replacement endpoint has to do, and
+what a page built entirely on WeeWX's JSON looks like.
+
 ## What it needs
 
 * WeeWX 5.2 or later
@@ -38,7 +42,8 @@ Then set the URL you will put `live.php` at:
         url = https://example.com/live.php
 ```
 
-`live.php` is installed into `public_html`, so the FTP or rsync report carries it
+`live.php` is installed into `public_html`, so the FTP or rsync report carries
+it
 up with everything else on its next run. If you publish some other way, copy it
 across yourself, and keep the copy the installer wrote: it holds the key.
 
@@ -61,9 +66,8 @@ wire, and changing it means changing `live.php` to match.
 
 Seconds to leave between posts. Default is `10`. Every LOOP packet is watched
 whatever this says, so a lower number costs your web space, not your station.
-
-At ten seconds a station posts about 8,600 times a day. At two seconds it is
-43,000, which some shared hosts will not have.
+What it costs is worked out in [How it
+works](https://github.com/hilman2/weewx-livedata/wiki/How-it-works).
 
 #### extremes
 
@@ -90,30 +94,27 @@ Which database the extremes are read from. Default is `wx_binding`.
 }
 ```
 
-Raw values in the unit system the station measures in, not formatted text. That
-is deliberate: one file then serves every report of the station, whatever units
-and language each of them renders in, and a reader who switches the page to
-another unit keeps working. `weewx.jsongenerator` writes the conversion table
-into `index.json`, so a page that already draws its charts from those files has
-everything it needs.
+Raw values in the unit system the station measures in, not formatted text, so
+one file serves every report of the station whatever units and language each of
+them renders in.
 
 `current` holds the last value seen for each observation, which is not the same
-as the last packet. A Vantage sends temperature in one packet and wind in the
-next, so a page fed from raw packets would show readings appearing and
-disappearing. A reading that has not arrived for sixteen minutes is left out
-altogether, which lets a page tell "no such sensor" from "not reporting".
+as the last packet. A reading that has not arrived for sixteen minutes is left
+out altogether, which lets a page tell "no such sensor" from "not reporting".
+
+`day` holds the high and low so far today, for the observations named in
+`extremes`.
 
 `dateTime` is when the readings were taken. Compare it against the clock to say
 that a station has gone quiet.
 
+Why it is shaped this way is in [How it
+works](https://github.com/hilman2/weewx-livedata/wiki/How-it-works).
+
 ## The endpoint
 
-`live.php` does four things: check the signature, check the age, check that the
-body parses as JSON, and write it. It writes to a temporary file and renames,
-because a browser may be reading the old one at that moment, and a rename is
-atomic within one filesystem.
-
-The station never sends the key. It sends
+`live.php` checks the signature, checks the age, checks that the body parses as
+JSON, and writes it out. The station never sends the key. It sends
 
 ```
 X-Timestamp: 1788000000
@@ -123,14 +124,13 @@ X-Signature: HMAC-SHA256(secret, timestamp + body)
 and the endpoint recomputes the signature. A post that somebody captured cannot
 be sent again once its timestamp has aged past two minutes.
 
-To write your own: read the two headers, recompute
-`hmac_sha256(secret, timestamp . body)`, compare it in constant time, refuse
-anything older than a couple of minutes, and write the body out. In Python that
-is `hmac.new`, in PHP `hash_hmac`, in Node `crypto.createHmac`.
-
 **Check that your host actually executes `.php`.** Where it does not, it serves
 the file as text and the key is on the open web. Fetching the URL in a browser
 should give you `POST only`, not source code.
+
+To write one in another language, see
+[The endpoint
+contract](https://github.com/hilman2/weewx-livedata/wiki/The-endpoint-contract).
 
 ## Using it from a page
 
@@ -161,6 +161,9 @@ reader asked for is the job of the table in `index.json`.
 [`examples/weewxtest`](examples/weewxtest) is a static page with no skin behind
 it: current readings, charts, the figures of the whole record, and a switch
 between German and American units, all of it fed by JSON that WeeWX writes.
+What that makes possible is in
+[A page with no
+skin](https://github.com/hilman2/weewx-livedata/wiki/A-page-with-no-skin).
 
 ## Tests
 

@@ -19,6 +19,9 @@ American units changes no file on the server: the reader picks another
 
 Running: <https://evoftp.fs-sys.de/weewxtest/>
 
+Why any of it is worth doing this way is on the wiki, under
+[A page with no skin](https://github.com/hilman2/weewx-livedata/wiki/A-page-with-no-skin).
+
 ## What it shows
 
 **Current readings**, with the age of the last one counting up beside them, and
