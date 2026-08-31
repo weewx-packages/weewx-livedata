@@ -156,6 +156,12 @@ setInterval(async () => {
 That last line puts the raw number on the page. Converting it into the unit the
 reader asked for is the job of the table in `index.json`.
 
+## A worked example
+
+[`examples/weewxtest`](examples/weewxtest) is a static page with no skin behind
+it: current readings, charts, the figures of the whole record, and a switch
+between German and American units, all of it fed by JSON that WeeWX writes.
+
 ## Tests
 
 ```

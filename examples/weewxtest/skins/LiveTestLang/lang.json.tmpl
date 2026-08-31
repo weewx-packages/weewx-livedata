@@ -1,0 +1,59 @@
+## Copyright (c) 2026 Manuel Hilgert
+## Distributed under terms of GPLv3.  See LICENSE.txt for your rights.
+#errorCatcher Echo
+#encoding UTF-8
+##
+## What a page needs to speak one language, as one file.
+##
+## Three things: what each reading is called, which unit it is to be shown in,
+## and the words the page adds itself. The first two come from WeeWX and change
+## with the report's 'lang' and 'unit_system'; the third from the [Texts]
+## sections in skin.conf and lang/<code>.conf.
+##
+## Run this template once per language, each report into its own directory, and
+## a page can switch between them by fetching another file. Nothing about the
+## language is baked into the page.
+##
+#set $shown = ['outTemp', 'dewpoint', 'outHumidity', 'barometer',
+               'windSpeed', 'windGust', 'rain', 'dayRain', 'ET',
+               'radiation', 'UV']
+#set $out = {'lang': $lang, 'labels': {}, 'units': {}, 'text': {}}
+#for $obs in $shown
+#silent $out['labels'].__setitem__($obs, $getVar('obs.label.' + $obs))
+#silent $out['units'].__setitem__($obs, $getVar('unit.unit_type.' + $obs))
+#end for
+##
+## $gettext looks each string up in [Texts]. The key on the left is what the
+## page asks for; the string on the right is what gets translated.
+#silent $out['text'].update({
+    'station': $station.location,
+    'peak_gust': $gettext("Highest gust today"),
+    'day': $gettext("Day"),
+    'week': $gettext("Week"),
+    'month': $gettext("Month"),
+    'year': $gettext("Year"),
+    'earlier': $gettext("Earlier"),
+    'later': $gettext("Later"),
+    'now': $gettext("Now"),
+    'waiting': $gettext("waiting for data"),
+    'no_data': $gettext("no data"),
+    'ago_seconds': $gettext("%s seconds ago"),
+    'ago_minutes': $gettext("%s minutes ago"),
+    'ago_hours': $gettext("%s hours ago"),
+    'charts_temp': $gettext("Temperature and dew point"),
+    'charts_baro': $gettext("Barometer"),
+    'charts_wind': $gettext("Wind"),
+    'charts_water': $gettext("Rain and evaporation"),
+    'records_title': $gettext("The whole record"),
+    'rain_total': $gettext("Rainfall"),
+    'et_total': $gettext("Evaporation"),
+    'balance': $gettext("Water balance"),
+    'wettest': $gettext("Wettest year"),
+    'driest': $gettext("Driest year"),
+    'wettest_month': $gettext("Wettest month"),
+    'driest_month': $gettext("Driest month"),
+    'wettest_day': $gettext("Wettest day"),
+    'warmest': $gettext("Highest temperature"),
+    'coldest': $gettext("Lowest temperature")})
+##
+$jsonize($out)
