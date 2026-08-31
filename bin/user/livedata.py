@@ -54,7 +54,6 @@ import weewx
 import weewx.manager
 import weewx.restx
 import weewx.xtypes
-from weeutil.weeutil import option_as_list
 
 log = logging.getLogger(__name__)
 
@@ -77,7 +76,7 @@ class StdLiveData(weewx.restx.StdRESTful):
             return
 
         # What steers this end. The rest goes to the thread.
-        self.extremes = option_as_list(site_dict.pop('extremes', None)) or []
+        self.extremes = _as_list(site_dict.pop('extremes', None))
         binding = site_dict.pop('data_binding', 'wx_binding')
         # 'url' reads better in a configuration file than 'server_url', which is
         # what RESTThread calls it.
@@ -300,6 +299,31 @@ class LiveDataThread(weewx.restx.RESTThread):
             str: The signature, as lowercase hex.
         """
         return hmac.new(self.secret, stamp.encode('utf-8') + body, hashlib.sha256).hexdigest()
+
+
+def _as_list(value):
+    """A configuration value as a list of names, however it was written.
+
+    ConfigObj splits `a, b` into a list when it reads a bare line, but hands back
+    one string when the line was quoted, which is how it writes a value that
+    holds commas. A file people edit by hand carries both spellings and they mean
+    the same thing.
+
+    Getting this wrong is quiet and expensive: the whole string arrives as one
+    observation name, and the query built from it fails with a SQL syntax error
+    that says nothing about where it came from.
+
+    Args:
+        value (str|list[str]|None): What the option holds.
+
+    Returns:
+        list[str]: The names, trimmed, without the empty ones.
+    """
+    if value is None:
+        return []
+    if isinstance(value, str):
+        value = value.split(',')
+    return [str(name).strip() for name in value if str(name).strip()]
 
 
 def _aggregate(manager, obs, span, kind):

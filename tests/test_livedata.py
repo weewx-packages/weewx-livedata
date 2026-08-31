@@ -19,8 +19,7 @@ import pytest
 
 import weewx
 import weewx.restx
-from weeutil.weeutil import option_as_list
-from user.livedata import LiveDataThread, StdLiveData
+from user.livedata import LiveDataThread, StdLiveData, _as_list
 
 SECRET = 'abcdef0123456789'
 NOW = 1788000000
@@ -53,7 +52,7 @@ def build(**overrides):
 
     service = StdLiveData.__new__(StdLiveData)
     service.engine = Engine()
-    service.extremes = option_as_list(site.get('extremes')) or []
+    service.extremes = _as_list(site.get('extremes'))
     service.cache = weewx.restx.CachedValues()
     service.day = {}
     service.queue = queue.Queue()
@@ -140,6 +139,30 @@ class TestTheDailyExtremes:
         service._raise_extremes(packet(NOW, windSpeed=5.0))
 
         assert service.day['outTemp'] == {'min': 10.0, 'max': 20.0}
+
+
+class TestReadingTheOptions:
+    """ConfigObj hands the same option back in two shapes."""
+
+    def test_a_bare_line_arrives_as_a_list(self):
+        assert _as_list(['outTemp', 'windSpeed']) == ['outTemp', 'windSpeed']
+
+    def test_a_quoted_line_arrives_as_one_string(self):
+        """This is what a written configuration looks like, and it cost an hour.
+
+        ConfigObj quotes a value holding commas when it writes it, and hands the
+        whole thing back as one name. The query built from that fails with a SQL
+        syntax error that says nothing about where it came from.
+        """
+        assert _as_list('outTemp, windSpeed') == ['outTemp', 'windSpeed']
+
+    def test_nothing_means_nothing(self):
+        assert _as_list(None) == []
+        assert _as_list('') == []
+        assert _as_list([]) == []
+
+    def test_stray_commas_and_spaces_are_dropped(self):
+        assert _as_list('outTemp,, windSpeed , ') == ['outTemp', 'windSpeed']
 
 
 class TestTheSignature:
