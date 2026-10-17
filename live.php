@@ -5,9 +5,7 @@
 #    See the file LICENSE.txt for your rights.
 #
 # Receives the readings WeeWX posts and writes them to live.json beside this
-# file. Around forty lines, so that anyone can read the whole thing before
-# putting it on their own host, and so that replacing it with Node, Python or a
-# cloud function is a small job.
+# file. Pages read the JSON file without executing PHP.
 #
 # The station never sends the key. It sends a signature over the timestamp and
 # the body, and this recomputes it. A post that was captured cannot be replayed

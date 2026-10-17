@@ -3,41 +3,14 @@
 #
 #    See the file LICENSE.txt for your rights.
 #
-"""Post the current readings to a web host, once every so many seconds.
+"""Collect LOOP readings and post signed JSON to live.php on a web host.
 
-A page that WeeWX did not render has no way to show a reading newer than the last
-report. This service gives it one. It watches LOOP packets, keeps the latest
-value of each observation, and posts the lot as JSON to a URL. Something at that
-URL writes the body to a file, and the page fetches that file.
+The service caches the latest value of each observation and includes the day's
+extremes for configured observations. A separate thread handles HTTP posts so
+the engine does not wait for the web host. The PHP endpoint writes live.json
+for pages to read.
 
-The direction matters more than it looks. The station posts outward, so it needs
-no open port, no fixed address and no dynamic DNS, which is what stops most live
-setups on a home connection.
-
-To use it, add to weewx.conf:
-
-    [StdRESTful]
-        [[LiveData]]
-            url = https://example.com/live.php
-            secret = <32 hex characters, written by the installer>
-
-            # How often to post, in seconds. Every LOOP packet is watched
-            # whatever this says; only the posting is held back.
-            post_interval = 10
-
-            # Which readings also carry their high and low for the day. Each
-            # name costs two queries against the daily summaries per archive
-            # record.
-            extremes = outTemp, windSpeed, windGust, barometer, rain
-
-    [Engine]
-        [[Services]]
-            restful_services = ..., user.livedata.StdLiveData
-
-The body is raw values with the unit system they were measured in, not formatted
-text. A page converts them itself, from the table `weewx.jsongenerator` writes
-into `index.json`. One file then serves every report of the station, whatever
-units and language each of them renders in.
+See README.md for installation and configuration.
 """
 
 import hashlib

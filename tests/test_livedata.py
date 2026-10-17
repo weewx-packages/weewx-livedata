@@ -73,7 +73,7 @@ class TestThePayload:
         assert current['windSpeed'] == 5.0
 
     def test_it_carries_the_unit_system_rather_than_formatted_text(self):
-        """The page converts, from the table the JSON generator writes."""
+        """The consumer receives raw values with their unit system."""
         service = build()
         service.cache.update(packet(NOW, outTemp=68.0), NOW)
 
