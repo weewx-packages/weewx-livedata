@@ -17,7 +17,9 @@ import hashlib
 import hmac
 import json
 import logging
+import os
 import queue
+import tempfile
 import time
 import urllib.request
 
@@ -25,12 +27,63 @@ import weedb
 import weeutil.weeutil
 import weewx
 import weewx.manager
+import weewx.reportengine
 import weewx.restx
 import weewx.xtypes
 
 log = logging.getLogger(__name__)
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
+
+
+class LiveDataGenerator(weewx.reportengine.ReportGenerator):
+    """Generate live.php in HTML_ROOT before FTP or rsync publishes the reports."""
+
+    def run(self):
+        """Write the endpoint using the station's configured signing key."""
+        root = self.config_dict['WEEWX_ROOT']
+        template = os.path.join(root, self.skin_dict['SKIN_ROOT'],
+                                self.skin_dict['skin'], 'live.php')
+        destination = os.path.join(root, self.skin_dict['HTML_ROOT'], 'live.php')
+        # WeeWX retains existing configuration values on an update. The endpoint
+        # must use that saved key, rather than the installer's new default.
+        secret = self.config_dict['StdRESTful']['LiveData']['secret']
+        write_endpoint(template, destination, secret)
+
+
+def write_endpoint(template, destination, secret):
+    """Generate a PHP endpoint without exposing a partially written file.
+
+    Args:
+        template (str): Path to the unconfigured live.php template.
+        destination (str): Path to the generated endpoint in the report output.
+        secret (str): Station signing key, including any PHP string characters.
+
+    Raises:
+        ValueError: If the key is empty or the template has no unique placeholder.
+    """
+    anchor = "$SECRET   = 'replace_me';"
+    with open(template, encoding='utf-8') as source:
+        text = source.read()
+    if not secret or secret == 'replace_me' or text.count(anchor) != 1:
+        raise ValueError("LiveData needs a signing key and an unconfigured PHP template")
+    quoted = secret.replace('\\', '\\\\').replace("'", "\\'")
+    text = text.replace(anchor, "$SECRET   = '%s';" % quoted, 1)
+    directory = os.path.dirname(os.path.abspath(destination))
+    os.makedirs(directory, exist_ok=True)
+    # The web server may read live.php during report generation. Replace it on
+    # the same filesystem so each request sees one complete version.
+    with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=directory,
+                                     prefix='.live-', delete=False) as output:
+        temporary = output.name
+        try:
+            output.write(text)
+            output.close()
+            os.chmod(temporary, 0o644)
+            os.replace(temporary, destination)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
 
 
 class StdLiveData(weewx.restx.StdRESTful):

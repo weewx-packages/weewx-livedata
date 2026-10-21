@@ -11,7 +11,7 @@
 # the body, and this recomputes it. A post that was captured cannot be replayed
 # once its timestamp has aged past MAX_AGE.
 
-$SECRET   = 'replace_me';        # the installer writes this
+$SECRET   = 'replace_me';        # the LiveData report writes this
 $TARGET   = __DIR__ . '/live.json';
 $MAX_AGE  = 120;                 # seconds a post stays acceptable
 $MAX_SIZE = 65536;               # bytes; a payload is normally under 2 kB

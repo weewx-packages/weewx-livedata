@@ -3,90 +3,76 @@
 #
 #    See the file LICENSE.txt for your rights.
 #
-"""The installer, which has to get the key into both halves or neither.
+"""Installer defaults and endpoint generation, without mutating the payload."""
 
-Run with:
-
-    PYTHONPATH=bin:/path/to/weewx/src pytest tests/
-"""
-
-import io
 import os
-import shutil
+import pathlib
 import sys
 
 import pytest
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT)
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 pytest.importorskip('weecfg.extension', reason="needs weewx on the path")
 
-from install import ANCHOR, LiveDataInstaller, _write_secret  # noqa: E402
+from install import LiveDataInstaller  # noqa: E402
+from user.livedata import write_endpoint  # noqa: E402
 
 
-@pytest.fixture
-def unpacked(tmp_path):
-    """A copy of live.php, the way weectl leaves one after unpacking.
+def test_installer_provides_a_station_key():
+    secret = LiveDataInstaller()['config']['StdRESTful']['LiveData']['secret']
 
-    Yields:
-        str: The directory holding it.
-    """
-    shutil.copy(os.path.join(ROOT, 'live.php'), str(tmp_path))
-    return str(tmp_path)
+    assert len(bytes.fromhex(secret)) == 16
 
 
-def php(where):
-    return io.open(os.path.join(where, 'live.php'), encoding='utf-8').read()
+def test_every_station_gets_its_own_default_key():
+    one, two = LiveDataInstaller(), LiveDataInstaller()
+
+    assert (one['config']['StdRESTful']['LiveData']['secret']
+            != two['config']['StdRESTful']['LiveData']['secret'])
 
 
-def test_the_key_reaches_the_configuration_and_the_file(unpacked):
-    """Both halves sign with it, so both halves have to have it."""
-    installer = LiveDataInstaller(here=unpacked)
-
-    secret = installer['config']['StdRESTful']['LiveData']['secret']
-    assert len(secret) == 32
-    assert ("$SECRET   = '%s';" % secret) in php(unpacked)
-    assert ANCHOR not in php(unpacked)
-
-
-def test_two_installs_do_not_get_two_keys(unpacked):
-    """The second would leave the station signing with a key the host lacks."""
-    first = LiveDataInstaller(here=unpacked)
-    written = php(unpacked)
-
-    LiveDataInstaller(here=unpacked)
-
-    assert php(unpacked) == written
-    assert first['config']['StdRESTful']['LiveData']['secret'] in written
-
-
-def test_every_install_gets_its_own_key(tmp_path):
-    """Two stations must not end up able to post to each other's endpoint."""
-    one, two = str(tmp_path / 'one'), str(tmp_path / 'two')
-    for where in (one, two):
-        os.makedirs(where)
-        shutil.copy(os.path.join(ROOT, 'live.php'), where)
-
-    assert (LiveDataInstaller(here=one)['config']['StdRESTful']['LiveData']['secret']
-            != LiveDataInstaller(here=two)['config']['StdRESTful']['LiveData']['secret'])
-
-
-def test_it_registers_the_service_where_the_engine_looks(unpacked):
-    installer = LiveDataInstaller(here=unpacked)
+def test_it_registers_the_service_and_report():
+    installer = LiveDataInstaller()
 
     assert installer['restful_services'] == 'user.livedata.StdLiveData'
+    assert installer['config']['StdReport']['LiveData']['skin'] == 'LiveData'
 
 
-def test_the_repository_copy_still_holds_the_anchor():
-    """The installer rewrites what weectl unpacked, never the checkout."""
-    assert ANCHOR in io.open(os.path.join(ROOT, 'live.php'), encoding='utf-8').read()
+def test_loading_the_installer_does_not_mutate_the_template():
+    template = ROOT / 'live.php'
+    original = template.read_bytes()
+
+    LiveDataInstaller()
+    LiveDataInstaller()
+
+    assert template.read_bytes() == original
+    assert b"$SECRET   = 'replace_me';" in original
 
 
-def test_a_file_without_the_anchor_is_left_alone(unpacked):
-    path = os.path.join(unpacked, 'live.php')
-    io.open(path, 'w', encoding='utf-8', newline='\n').write("<?php\n# nothing to replace\n")
+@pytest.mark.parametrize('template,secret', [
+    ('<?php\n# missing placeholder\n', 'valid-key'),
+    ("$SECRET   = 'replace_me';", ''),
+    ("$SECRET   = 'replace_me';", 'replace_me'),
+    ("$SECRET   = 'replace_me';" * 2, 'valid-key'),
+])
+def test_invalid_inputs_leave_the_existing_endpoint_intact(tmp_path, template, secret):
+    source = tmp_path / 'template.php'
+    source.write_text(template)
+    endpoint = tmp_path / 'live.php'
+    endpoint.write_text('existing endpoint')
 
-    _write_secret('deadbeef', unpacked)
+    with pytest.raises(ValueError):
+        write_endpoint(str(source), str(endpoint), secret)
 
-    assert php(unpacked) == "<?php\n# nothing to replace\n"
+    assert endpoint.read_text() == 'existing endpoint'
+
+
+def test_generated_endpoint_is_readable_by_the_web_server(tmp_path):
+    endpoint = tmp_path / 'web' / 'live.php'
+
+    write_endpoint(str(ROOT / 'live.php'), str(endpoint), 'a-station-key')
+
+    assert os.stat(str(endpoint)).st_mode & 0o777 == 0o644
+    assert list(endpoint.parent.iterdir()) == [endpoint]

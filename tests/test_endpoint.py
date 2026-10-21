@@ -32,7 +32,8 @@ import urllib.request
 
 import pytest
 
-SECRET = 'abcdef0123456789'
+# A configured key may contain PHP quoting characters as well as hex digits.
+SECRET = "a'b\\c$not_a_variable"
 HERE = os.path.dirname(os.path.abspath(__file__))
 LIVE_PHP = os.path.join(os.path.dirname(HERE), 'live.php')
 
@@ -52,12 +53,9 @@ def endpoint(tmp_path):
     Yields:
         tuple[str, str]: The URL to post to, and the path the file lands at.
     """
-    text = io.open(LIVE_PHP, encoding='utf-8').read()
-    assert "$SECRET   = 'replace_me';" in text, "the installer's anchor has moved"
-    target = tmp_path / 'live.php'
-    target.write_text(text.replace("$SECRET   = 'replace_me';",
-                                   "$SECRET   = '%s';" % SECRET, 1),
-                      encoding='utf-8')
+    from user.livedata import write_endpoint
+
+    write_endpoint(LIVE_PHP, str(tmp_path / 'live.php'), SECRET)
 
     port = free_port()
     server = subprocess.Popen(['php', '-S', '127.0.0.1:%d' % port, '-t', str(tmp_path)],
