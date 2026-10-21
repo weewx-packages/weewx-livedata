@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "repository": {
+    "id": "org.weewx-packages.livedata",
+    "name": "WeeWX LiveData",
+    "description": "Live readings published through live.php."
+  },
+  "packages": [
+    {
+      "id": "livedata",
+      "installer_name": "livedata",
+      "name": "LiveData",
+      "description": "Publish live WeeWX readings as static JSON through a signed PHP endpoint.",
+      "types": [
+        "service",
+        "generator"
+      ],
+      "keywords": [
+        "live.php",
+        "live",
+        "php",
+        "json",
+        "loop",
+        "realtime"
+      ],
+      "homepage": "https://github.com/weewx-packages/weewx-livedata",
+      "releases": [
+        {
+          "version": "0.2.0",
+          "requires_python": ">=3.7",
+          "requires_weewx": ">=5.2,<6",
+          "archive": {
+            "url": "https://github.com/weewx-packages/weewx-livedata/releases/download/v0.2.0/weewx-livedata-0.2.0.zip",
+            "format": "zip",
+            "sha256": "0e5d212f738aaf712dec60ddccbd244ed337e1cdf55dab46ab4036418082ab3c"
+          },
+          "release_notes": "https://github.com/weewx-packages/weewx-livedata/releases/tag/v0.2.0",
+          "restart_required": true
+        }
+      ]
+    }
+  ]
+}
