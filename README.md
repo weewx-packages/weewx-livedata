@@ -19,10 +19,12 @@ the live readings and works independently of it.
 
 ## Installing
 
-With a WeeWX build that includes extension repositories:
+With a WeeWX build that includes extension repositories, add the
+[shared package catalog](https://github.com/weewx-packages/catalog) once and
+install `livedata`:
 
 ``` sh
-weectl extension repo add livedata https://raw.githubusercontent.com/weewx-packages/weewx-livedata/master/repository.json
+weectl extension repo add packages https://raw.githubusercontent.com/weewx-packages/catalog/main/repository.json
 weectl extension install livedata
 ```
 
@@ -136,8 +138,8 @@ files remain in `HTML_ROOT` and on your web host. Remove `live.php` and
 
 ## Publishing releases
 
-Each release is a versioned ZIP with a SHA-256 digest in
-[`repository.json`](repository.json). This repository publishes only `livedata`.
+Release downloads are listed in the
+[shared package catalog](https://github.com/weewx-packages/catalog).
 See [PUBLISHING.md](PUBLISHING.md) for the release steps.
 
 ## Tests

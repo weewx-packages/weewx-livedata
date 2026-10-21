@@ -1,8 +1,8 @@
 # Publishing a release
 
-The mutable `repository.json` index points to versioned GitHub release assets.
-Publish the archive before adding it to the index. Keep old release assets and
-hashes unchanged so stations can reproduce an installed version.
+The [shared package catalog](https://github.com/weewx-packages/catalog) lists
+this extension. Publish the archive before adding its metadata to that catalog. Keep old release assets and hashes
+unchanged so stations can reproduce an installed version.
 
 1. Update `VERSION` in `install.py` and `bin/user/livedata.py`. Run the tests
    described in [README.md](README.md), including the PHP endpoint tests.
@@ -18,12 +18,12 @@ hashes unchanged so stations can reproduce an installed version.
 
 4. Create the GitHub release for the tag and upload that ZIP. Download the
    published asset and compare its digest with the local archive.
-5. Append a release to `repository.json` with the version, archive URL, format,
-   digest, compatible Python and WeeWX versions, and restart requirement.
-   Validate it with `weectl extension repo validate repository.json`.
-6. Commit and push the index. On a test station, refresh the source, search for
-   `livedata`, install or update it, and run the `LiveData` report. Check that the
-   generated endpoint accepts posts signed with the configured station key.
+5. Update the `livedata` entry in the shared catalog. Follow its
+   [contribution guide](https://github.com/weewx-packages/catalog/blob/main/CONTRIBUTING.md)
+   to supply the release metadata and validate the index.
+6. On a test station, refresh `packages`, install or update `livedata`, and run
+   the `LiveData` report. Check that the generated endpoint accepts posts signed
+   with the configured station key.
 
-Repository IDs, package IDs and `installer_name` identify existing installations.
-Keep them stable when adding releases. Keywords affect search and can change.
+The catalog owns the repository identity. Keep the package ID and installer
+name `livedata` stable when adding releases.
