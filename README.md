@@ -117,15 +117,14 @@ Database binding used to read daily extremes. Default is `wx_binding`.
 
 #### log_success
 
-Whether each successful post is logged. If it is not set here, it comes from
-`[StdRESTful]` or the top of `weewx.conf`, and is `True` when neither sets it.
-At the default interval that is one log line every ten seconds. Set
-`log_success = False` to stop it.
+Whether each successful post is logged. Default is `False`. Only this section
+counts: `log_success` at the top of `weewx.conf` or in `[StdRESTful]` does not
+apply. With `True`, the default interval writes one log line every ten seconds.
 
 #### log_failure
 
-Whether a failed post is logged. Inherited like `log_success`, `True` when
-nothing sets it.
+Whether a failed post is logged. If it is not set here, it comes from
+`[StdRESTful]` or the top of `weewx.conf`, and is `True` when neither sets it.
 
 #### Posting thread options
 
@@ -140,8 +139,7 @@ These options are passed to WeeWX's posting thread:
 | `max_backlog` | `1` | Snapshots that may wait in the queue. |
 | `skip_upload` | `False` | Prepare and sign each post without sending it. |
 
-Any other key in this section is also passed to the posting thread. A key it
-does not accept raises an error when WeeWX loads the service.
+The service ignores any other key in this section and logs a warning.
 
 ### Further reading
 

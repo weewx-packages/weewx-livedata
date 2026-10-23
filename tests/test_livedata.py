@@ -15,6 +15,7 @@ import hmac
 import json
 import queue
 
+import configobj
 import pytest
 
 import weewx
@@ -163,6 +164,38 @@ class TestReadingTheOptions:
 
     def test_stray_commas_and_spaces_are_dropped(self):
         assert _as_list('outTemp,, windSpeed , ') == ['outTemp', 'windSpeed']
+
+
+class TestTheServiceOptions:
+    """What StdLiveData passes on from [[LiveData]] to its thread."""
+
+    @staticmethod
+    def service(monkeypatch, tmp_path, top=None, **live):
+        monkeypatch.setattr(LiveDataThread, 'start', lambda self: None)
+        site = {'url': 'https://example.com/live.php', 'secret': SECRET}
+        site.update(live)
+        config = {'WEEWX_ROOT': str(tmp_path),
+                  'StdRESTful': {'LiveData': site},
+                  'DataBindings': {'wx_binding': {'database': 'archive'}},
+                  'Databases': {'archive': {'database_name': 'weewx.sdb',
+                                            'database_type': 'SQLite'}},
+                  'DatabaseTypes': {'SQLite': {'driver': 'weedb.sqlite'}}}
+        if top is not None:
+            config['log_success'] = top
+        return StdLiveData(Engine(), configobj.ConfigObj(config))
+
+    def test_log_success_ignores_the_top_of_weewx_conf(self, monkeypatch, tmp_path):
+        assert not self.service(monkeypatch, tmp_path, top='True').thread.log_success
+        assert not self.service(monkeypatch, tmp_path).thread.log_success
+
+    def test_log_success_in_livedata_turns_it_on(self, monkeypatch, tmp_path):
+        service = self.service(monkeypatch, tmp_path, top='False', log_success='True')
+        assert service.thread.log_success
+
+    def test_an_unknown_option_is_dropped_with_a_warning(self, monkeypatch, tmp_path, caplog):
+        service = self.service(monkeypatch, tmp_path, post_intervall='5')
+        assert service.thread.post_interval == 10
+        assert "unknown option 'post_intervall'" in caplog.text
 
 
 class TestTheSignature:

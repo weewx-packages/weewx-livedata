@@ -15,6 +15,7 @@ See README.md for installation and configuration.
 
 import hashlib
 import hmac
+import inspect
 import json
 import logging
 import os
@@ -100,6 +101,12 @@ class StdLiveData(weewx.restx.StdRESTful):
         site_dict = weewx.restx.get_site_dict(config_dict, 'LiveData', 'url', 'secret')
         if site_dict is None:
             return
+        # get_site_dict() takes log_success from the top of weewx.conf, which the
+        # stock file sets to True, or sets True itself. At one post every ten
+        # seconds that is 8640 log lines a day. Only a log_success in [[LiveData]]
+        # itself overrides the thread's default of False.
+        if 'log_success' not in config_dict['StdRESTful']['LiveData']:
+            site_dict['log_success'] = False
 
         # What steers this end. The rest goes to the thread.
         self.extremes = _as_list(site_dict.pop('extremes', None))
@@ -108,6 +115,14 @@ class StdLiveData(weewx.restx.StdRESTful):
         # what RESTThread calls it.
         site_dict['server_url'] = site_dict.pop('url')
         site_dict.setdefault('post_interval', 10)
+        # What is left becomes keyword arguments of LiveDataThread. A misspelt
+        # option would stop WeeWX from loading the service with a TypeError, so
+        # drop anything the thread does not accept and say so in the log.
+        thread_options = set(inspect.signature(LiveDataThread.__init__).parameters)
+        thread_options -= {'self', 'q'}
+        for option in sorted(set(site_dict) - thread_options):
+            log.warning("LiveData: ignoring unknown option '%s'", option)
+            del site_dict[option]
 
         self.manager_dict = weewx.manager.get_manager_dict_from_config(config_dict, binding)
 
