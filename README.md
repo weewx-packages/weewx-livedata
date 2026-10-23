@@ -8,8 +8,8 @@ A WeeWX service collects LOOP readings and sends signed HTTP posts to
 that static file, so visitors do not trigger PHP execution or database queries.
 The station only needs an outgoing connection.
 
-Archive JSON is the job of WeeWX's JSON generator in 5.6. This extension handles
-the live readings and works independently of it.
+The maintained release is **0.2.0**. It publishes the latest live snapshot,
+without retaining historical JSON. Archive reports are configured separately.
 
 ## Requirements
 
@@ -19,28 +19,21 @@ the live readings and works independently of it.
 
 ## Installing
 
-With a WeeWX build that includes extension repositories, add the
-[shared package catalog](https://github.com/weewx-packages/catalog) once and
-install `livedata`:
+Use `weectl` from the Python environment running WeeWX. With stock WeeWX 5,
+install the published archive:
 
-``` sh
-weectl extension repo add packages https://raw.githubusercontent.com/weewx-packages/catalog/main/repository.json
-weectl extension install livedata
+```sh
+weectl extension install https://github.com/weewx-packages/weewx-livedata/releases/download/v0.2.0/weewx-livedata-0.2.0.zip --config /path/to/weewx.conf
 ```
 
-You can find the package with `weectl extension search php`. To check for and
-install updates from this source:
+Replace `/path/to/weewx.conf` with your station configuration. You can also
+download that URL and pass the local archive to the same command. Use elevated
+permissions only when your station files require them.
 
-``` sh
-weectl extension check-updates livedata
-weectl extension update livedata
-```
-
-For WeeWX versions without repository support, install the release archive:
-
-``` sh
-weectl extension install https://github.com/weewx-packages/weewx-livedata/releases/download/v0.2.0/weewx-livedata-0.2.0.zip
-```
+Stock WeeWX 5.5.2 accepts archive URLs and files here. Repository search and
+package-ID installation require the separate, experimental
+[weewx-package-manager](https://github.com/weewx-packages/weewx-package-manager),
+which is not released or bundled with WeeWX.
 
 The installer registers the posting service and the `LiveData` report. It
 creates a signing key for a new station and retains your existing settings on
@@ -87,7 +80,7 @@ value as zero.
 `day` contains today's minimum and maximum for the observations configured in
 `extremes`.
 
-The [live file format](https://github.com/hilman2/weewx-livedata/wiki/How-it-works#the-live-file)
+The [live file format](docs/how-it-works.md#the-live-file)
 describes the fields and unit-system codes.
 
 ## Options
@@ -123,17 +116,30 @@ extremes =
 
 Database binding used to read daily extremes. Default is `wx_binding`.
 
+## Updates and limits
+
+Install the next published version by passing its fixed release archive URL to
+`weectl extension install` with the same `--config` path. Restart WeeWX yourself
+and publish the regenerated endpoint. The installer preserves existing settings
+and the signing key.
+
+The station and host clocks must be within 120 seconds for signed requests.
+An accepted upload returns HTTP 204. The endpoint retains the last `live.json`
+when uploads stop, so pages must check `dateTime`. It does not provide history.
+LOOP and archive data should use the same unit system for daily extremes.
+
 ## Removing the extension
 
-Run `weectl extension uninstall livedata` and restart WeeWX. Generated report
-files remain in `HTML_ROOT` and on your web host. Remove `live.php` and
+Run `weectl extension uninstall livedata --config /path/to/weewx.conf` with the
+same station configuration used for installation, and restart WeeWX. Generated
+report files remain in `HTML_ROOT` and on your web host. Remove `live.php` and
 `live.json` there when you stop publishing live readings.
 
 ## Further reading
 
-* [How it works](https://github.com/hilman2/weewx-livedata/wiki/How-it-works):
+* [How it works](docs/how-it-works.md):
   the LOOP cache, live file format, daily extremes and posting thread.
-* [The endpoint contract](https://github.com/hilman2/weewx-livedata/wiki/The-endpoint-contract):
+* [The endpoint contract](docs/endpoint-contract.md):
   request signing and the checks performed by `live.php`.
 
 ## Publishing releases
@@ -155,4 +161,5 @@ The endpoint tests run `live.php` under PHP's built-in HTTP server. They require
 
 ## Licence
 
-GPL 3, the same as WeeWX.
+Copyright 2026 Manuel Hilgert. [GNU GPLv3](LICENSE.txt).
+The project originated as [hilman2/weewx-livedata](https://github.com/hilman2/weewx-livedata).
