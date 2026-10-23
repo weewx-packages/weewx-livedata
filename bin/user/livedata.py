@@ -34,7 +34,7 @@ import weewx.xtypes
 
 log = logging.getLogger(__name__)
 
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 
 
 class LiveDataGenerator(weewx.reportengine.ReportGenerator):
