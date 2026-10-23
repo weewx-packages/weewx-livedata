@@ -2,7 +2,7 @@
 
 This page describes the request sent by the WeeWX service and the checks in
 `live.php`. For installation, see the
-[README](../README.md#installing).
+[README](../README.md#installation).
 
 ## The request
 
