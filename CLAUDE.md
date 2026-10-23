@@ -21,3 +21,8 @@ Run `just fast` with WeeWX's dependencies installed and its Python executable on
 `PATH`. When using a WeeWX checkout, set `PYTHONPATH=/path/to/weewx/src`.
 Endpoint tests require `php` on `PATH`; otherwise pytest skips them.
 The local suite took about two seconds with PHP 8.3 in Docker.
+
+## Documentation
+
+README follows the weewx-packages schema and names no versions or archive URLs;
+installation links to the catalog page.
